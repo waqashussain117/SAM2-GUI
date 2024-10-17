@@ -125,7 +125,7 @@ Ensure all required packages are installed:
 ### Run the Application
 
 ```bash
-python sam2_gui.py
+python app.py
 ```
 
 ### Interface Overview
