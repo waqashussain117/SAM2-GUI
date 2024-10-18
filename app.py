@@ -490,8 +490,6 @@ class MaskGenerationThread(QThread):
     def __init__(
         self,
         predictor,
-        image_features,
-        orig_hw,
         point_coords=None,
         point_labels=None,
         lines=None,
@@ -500,8 +498,6 @@ class MaskGenerationThread(QThread):
     ):
         super().__init__()
         self.predictor = predictor
-        self.image_features = image_features  # Store image features
-        self.orig_hw = orig_hw  # Store original image size
         self.point_coords = point_coords
         self.point_labels = point_labels
         self.lines = lines
@@ -511,12 +507,8 @@ class MaskGenerationThread(QThread):
 
     def run(self):
         try:
-            # Set image embeddings to avoid recomputing them
-            self.predictor.set_image_embedding(self.image_features, self.orig_hw)
-
-            # Convert lines to points or boxes as per SAM2 requirements
+            # Process lines into points if any
             if self.lines:
-                # Sample points along each line
                 sampled_points = []
                 sampled_labels = []
                 for line in self.lines:
@@ -525,8 +517,9 @@ class MaskGenerationThread(QThread):
                     for i in range(num_samples + 1):
                         x = int(x0 + (x1 - x0) * i / num_samples)
                         y = int(y0 + (y1 - y0) * i / num_samples)
-                        sampled_points.append([y, x])
-                        sampled_labels.append(1)  # Foreground label
+                        sampled_points.append([y, x])  # SAM expects (y, x)
+                        sampled_labels.append(1)  # Foreground
+
                 if self.point_coords is not None:
                     self.point_coords = (
                         np.vstack([self.point_coords, np.array(sampled_points)])
@@ -535,6 +528,7 @@ class MaskGenerationThread(QThread):
                     )
                 else:
                     self.point_coords = np.array(sampled_points) if len(sampled_points) > 0 else None
+
                 if self.point_labels is not None:
                     self.point_labels = (
                         np.hstack([self.point_labels, np.array(sampled_labels)])
@@ -546,18 +540,19 @@ class MaskGenerationThread(QThread):
                         np.array(sampled_labels) if len(sampled_labels) > 0 else None
                     )
 
-            # Move data to device
-            device = self.predictor.device
+            # Prepare data for predictor
             if self.point_coords is not None:
-                point_coords = torch.tensor(self.point_coords, device=device)
+                point_coords = torch.tensor(self.point_coords, device=self.predictor.device)
             else:
                 point_coords = None
+
             if self.point_labels is not None:
-                point_labels = torch.tensor(self.point_labels, device=device)
+                point_labels = torch.tensor(self.point_labels, device=self.predictor.device)
             else:
                 point_labels = None
+
             if self.boxes is not None:
-                boxes = torch.tensor(self.boxes, device=device)
+                boxes = torch.tensor(self.boxes, device=self.predictor.device)
             else:
                 boxes = None
 
@@ -580,6 +575,7 @@ class MaskGenerationThread(QThread):
             masks = np.array(processed_masks)
 
             self.mask_generated.emit(masks, scores)
+
         except Exception as e:
             error_msg = f"An error occurred during mask generation: {str(e)}"
             self.error_occurred.emit(error_msg)
@@ -806,7 +802,8 @@ class SAM2GUI(QMainWindow):
         self.predictor = SAM2ImagePredictor(self.sam2_model)
         if self.image is not None:
             self.predictor.set_image(np.array(self.image).astype(np.float32) / 255.0)
-            self.image_embeddings, self.orig_hw = self.predictor.get_image_embedding()
+            self.image_embeddings = self.predictor.get_image_embedding()
+            self.orig_hw = self.image.size[::-1]  # Get image size in (height, width)
 
     def upload_image(self):
         """Handles image uploading."""
@@ -816,14 +813,14 @@ class SAM2GUI(QMainWindow):
         )
         if file_path:
             try:
-                image = Image.open(file_path).convert("RGB")  # Ensure RGBA mode
+                image = Image.open(file_path).convert("RGB")  # Ensure RGB mode
                 # Optional: Resize image if too large
                 max_size = (1024, 1024)
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
                 self.image = image
                 self.canvas.display_image(self.image)
                 self.predictor.set_image(np.array(self.image).astype(np.float32) / 255.0)
-                self.image_embeddings, self.orig_hw = self.predictor.get_image_embedding()
+                self.predictor.get_image_embedding()  # Compute and store embeddings internally
                 self.generate_mask_btn.setEnabled(True)
                 self.clear_btn.setEnabled(True)
                 self.remove_mask_btn.setEnabled(False)
@@ -878,8 +875,6 @@ class SAM2GUI(QMainWindow):
         # Start mask generation thread
         self.thread = MaskGenerationThread(
             predictor=self.predictor,
-            image_features=self.image_embeddings,  # Pass image_embeddings
-            orig_hw=self.orig_hw,  # Pass orig_hw
             point_coords=np.array(self.point_coords) if self.point_coords else None,
             point_labels=np.array(self.point_labels) if self.point_labels else None,
             lines=self.lines,
