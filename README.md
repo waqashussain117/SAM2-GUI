@@ -30,7 +30,7 @@ A GUI application for image segmentation using the **SAM2 (Segment Anything Mode
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/sam2-gui.git
+git clone https://github.com/waqashussain117/sam2-gui.git
 cd sam2-gui
 ```
 
