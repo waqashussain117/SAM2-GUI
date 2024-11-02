@@ -187,7 +187,7 @@ After adding annotations (points and/or lines):
 
 ## Acknowledgments
 
-- **SAM2**: This application utilizes the [Segment Anything Model 2 (SAM2)](https://github.com/yourusername/sam2) for image segmentation.
+- **SAM2**: This application utilizes the [Segment Anything Model 2 (SAM2)](https://github.com/meta/sam2) for image segmentation.
 - **PyQt**: The GUI is built using [PyQt](https://www.riverbankcomputing.com/software/pyqt/).
 
 ## License
@@ -196,4 +196,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Note**: Replace `https://github.com/yourusername/sam2-gui.git` and other placeholder URLs with the actual URLs relevant to your project. Ensure that the `LICENSE` file is included if you are distributing the project.
