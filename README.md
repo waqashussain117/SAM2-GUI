@@ -187,7 +187,7 @@ After adding annotations (points and/or lines):
 
 ## Acknowledgments
 
-- **SAM2**: This application utilizes the [Segment Anything Model 2 (SAM2)]([https://github.com/meta/sam2](https://github.com/facebookresearch/sam2)) for image segmentation.
+- **SAM2**: This application utilizes the [Segment Anything Model 2 (SAM2)](https://github.com/facebookresearch/sam2) for image segmentation.
 - **PyQt**: The GUI is built using [PyQt](https://www.riverbankcomputing.com/software/pyqt/).
 
 ## License
